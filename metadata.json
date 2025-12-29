@@ -1,0 +1,5 @@
+{
+  "name": "AegisCare",
+  "description": "AI-augmented emergency triage platform bridging patients and hospital ER teams using Gemini 3 Pro and Trishul security framework.",
+  "requestFramePermissions": []
+}
