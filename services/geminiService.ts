@@ -210,7 +210,7 @@ export const generateSBAR = async (input: TriageInput) => {
         }
     });
 
-    const result = JSON.parse(response.text || "{}");
+    const result = JSON.parse(response.text);
 
     // Normalize output for the app
     return {
