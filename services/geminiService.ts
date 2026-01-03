@@ -21,15 +21,21 @@ export const maskPII = (text: string): string => {
 };
 
 // --- VISION SIMULATION ---
-export const analyzeVisionSnapshot = async (): Promise<VisionAnalysis> => {
+export const analyzeVisionSnapshot = async (): Promise<{
+  detected: boolean;
+  boundingBox: { x: number; y: number; w: number; h: number };
+  tags: string[];
+  imageUrl: string;
+}> => {
   await new Promise(r => setTimeout(r, 1200));
   return {
     detected: true,
     boundingBox: { x: 35, y: 25, w: 30, h: 40 },
     tags: ["Pallor: Detected", "Sweating: High", "Respiration: Rapid", "ECG Pattern"],
-    imageUrl: "https://placehold.co/400x300/1e293b/d97706?text=Chest+Analysis+Frame"
+    imageUrl: "https://placehold.co/400x300/1e293b/d97706?text=Chest+Analysis+Frame",
   };
 };
+
 
 // --- ADVANCED TRIAGE LOGIC (FALLBACK) ---
 interface ClinicalProfile {
@@ -226,50 +232,102 @@ export const generateSBAR = async (input: TriageInput) => {
 };
 
 // --- NEW: AI FIRST AID ASSISTANT ---
-export const generateFirstAidAdvice = async (query: string): Promise<FirstAidResult> => {
-    try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-        const model = 'gemini-2.5-flash';
+export const generateFirstAidAdvice = async (
+  query: string
+): Promise<{
+  condition: string;
+  steps: string[];
+  warning: string;
+}> => {
+  try {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
 
-        const prompt = `Provide immediate, short, actionable first aid steps for: "${query}".
-        Focus on immediate stabilization until help arrives. 
-        Format as JSON with fields: condition (string), steps (array of strings, max 3), warning (string).
-        Keep it under 50 words total.`;
+    const model = "gemini-2.5-flash";
+    const prompt = `Provide immediate, short, actionable first aid steps for: "${query}".
+Focus on immediate stabilization until help arrives.
+Format as JSON with fields: condition (string), steps (array of strings, max 3), warning (string).
+Keep it under 50 words total.`;
 
-        const response = await ai.models.generateContent({
-            model: model,
-            contents: prompt,
-            config: {
-                responseMimeType: "application/json"
-            }
-        });
-        
-        const jsonText = response.text || "{}";
-        const json = JSON.parse(jsonText);
-        
-        return {
-            condition: json.condition || query,
-            steps: json.steps || ["Call emergency services immediately.", "Keep patient calm.", "Do not give food or water."],
-            warning: json.warning || "Seek professional medical help immediately."
-        };
-    } catch (e) {
-        return {
-            condition: query,
-            steps: ["Ensure safety of scene.", "Call Emergency Services (108/911).", "Monitor breathing and pulse."],
-            warning: "Offline Mode: Seek help immediately."
-        };
-    }
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    const jsonText = response.text || "{}";
+    const json = JSON.parse(jsonText);
+
+    return {
+      condition: json.condition || query,
+      steps:
+        json.steps || [
+          "Call emergency services immediately.",
+          "Keep patient calm.",
+          "Do not give food or water.",
+        ],
+      warning:
+        json.warning || "Seek professional medical help immediately.",
+    };
+  } catch (e) {
+    return {
+      condition: query,
+      steps: [
+        "Ensure safety of scene.",
+        "Call Emergency Services (108/911).",
+        "Monitor breathing and pulse.",
+      ],
+      warning: "Offline Mode: Seek help immediately.",
+    };
+  }
 };
+
 
 // --- NEW: SIMULATED HOSPITAL LOCATOR ---
-export const getNearbyHospitals = async (): Promise<HospitalResource[]> => {
-    await new Promise(r => setTimeout(r, 800)); // Simulate API call
-    return [
-        { id: 'h1', name: 'City General Hospital', distance: '1.2 km', driveTime: '5 mins', erWaitTime: 'Low (< 15m)', status: 'Open', specialties: ['Trauma L1', 'Stroke'] },
-        { id: 'h2', name: 'St. Mary’s Cardiac Center', distance: '3.5 km', driveTime: '12 mins', erWaitTime: 'Med (30m)', status: 'Crowded', specialties: ['Cardiac', 'Thoracic'] },
-        { id: 'h3', name: 'Westside Urgent Care', distance: '0.8 km', driveTime: '3 mins', erWaitTime: 'High (> 1h)', status: 'Full', specialties: ['General'] },
-    ];
+export const getNearbyHospitals = async (): Promise<
+  {
+    id: string;
+    name: string;
+    distance: string;
+    driveTime: string;
+    erWaitTime: string;
+    status: string;
+    specialties: string[];
+  }[]
+> => {
+  await new Promise(r => setTimeout(r, 800)); // Simulate API call
+  return [
+    {
+      id: "h1",
+      name: "City General Hospital",
+      distance: "1.2 km",
+      driveTime: "5 mins",
+      erWaitTime: "Low (< 15m)",
+      status: "Open",
+      specialties: ["Trauma L1", "Stroke"],
+    },
+    {
+      id: "h2",
+      name: "St. Mary’s Cardiac Center",
+      distance: "3.5 km",
+      driveTime: "12 mins",
+      erWaitTime: "Med (30m)",
+      status: "Crowded",
+      specialties: ["Cardiac", "Thoracic"],
+    },
+    {
+      id: "h3",
+      name: "Westside Urgent Care",
+      distance: "0.8 km",
+      driveTime: "3 mins",
+      erWaitTime: "High (> 1h)",
+      status: "Full",
+      specialties: ["General"],
+    },
+  ];
 };
+
 
 // --- NEW: EMERGENCY CHAT BOT ---
 export const generateEmergencyChatResponse = async (history: FitnessMessage[], lastMessage: string): Promise<string> => {
