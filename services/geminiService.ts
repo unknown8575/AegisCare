@@ -1,4 +1,3 @@
-
 import { TriageInput, ESILevel, VisionAnalysis, HealthReport, DietPlan, FitnessMessage, AssumptionInput, RiskCategory, SimulatedLab, WeeklyPlan, DietPreferences, DayPlan, MealSlot, DishOption, HospitalResource, FirstAidResult } from "../types";
 import { GoogleGenAI, Type } from "@google/genai";
 
@@ -150,7 +149,7 @@ export const generateSBAR = async (input: TriageInput) => {
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
     // Using Gemini 3 Pro for advanced medical reasoning and ESI classification
     const model = 'gemini-3-pro-preview';
 
@@ -229,7 +228,7 @@ export const generateSBAR = async (input: TriageInput) => {
 // --- NEW: AI FIRST AID ASSISTANT ---
 export const generateFirstAidAdvice = async (query: string): Promise<FirstAidResult> => {
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
         const model = 'gemini-2.5-flash';
 
         const prompt = `Provide immediate, short, actionable first aid steps for: "${query}".
@@ -585,7 +584,7 @@ const filterDishes = (category: string, pref: DietPreferences, flags: string[]):
 // --- RECIPE GENERATION (REAL AI) ---
 export const generateDetailedRecipe = async (dishName: string, healthFlags: string[]): Promise<DishOption> => {
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
         const model = 'gemini-2.5-flash';
 
         const prompt = `Create a detailed, healthy cooking recipe for "${dishName}".
