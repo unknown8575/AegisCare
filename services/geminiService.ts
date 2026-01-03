@@ -149,91 +149,106 @@ const generateSBARFallback = async (input: TriageInput) => {
 
 // --- MAIN AI TRIAGE FUNCTION ---
 export const generateSBAR = async (input: TriageInput) => {
+  // Normalize possibly undefined strings so types are plain string
+  const safeInput: TriageInput = {
+    ...input,
+    symptomsText: input.symptomsText ?? "",
+    duration: input.duration ?? "",
+    language: input.language ?? "en",
+    gender: input.gender ?? "Patient",
+  };
+
   // 1. Guardrails
-  if (!isMedicalIntent(input.symptomsText)) {
-    throw new Error("TRISHUL_BLOCK: Non-medical intent detected. System restricted to Emergency Triage.");
+  if (!isMedicalIntent(safeInput.symptomsText)) {
+    throw new Error(
+      "TRISHUL_BLOCK: Non-medical intent detected. System restricted to Emergency Triage."
+    );
   }
 
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+
     // Using Gemini 3 Pro for advanced medical reasoning and ESI classification
-    const model = 'gemini-3-pro-preview';
+    const model = "gemini-3-pro-preview";
 
-    const prompt = `Act as an expert Triage Nurse and Emergency Physician. 
-    Analyze the following patient intake to generate a Triage Report.
-    
-    PATIENT DATA:
-    - Age/Gender: ${input.age} / ${input.gender}
-    - Chief Complaint: ${input.symptomsText}
-    - Pain Score: ${input.painScore}/10
-    - Duration: ${input.duration}
-    - Chest Pain: ${input.hasChestPain ? 'Yes' : 'No'}
-    - Breathing Difficulty: ${input.hasBreathingIssue ? 'Yes' : 'No'}
-    - Language: ${input.language}
+    const prompt = `Act as an expert Triage Nurse and Emergency Physician.
 
-    REQUIRED OUTPUT (JSON):
-    1. medicalCategory: One of [CARDIAC, RESPIRATORY, NEURO, TRAUMA, GENERAL, GASTRO, ORTHO]
-    2. severity: One of [CRITICAL, HIGH, MODERATE, LOW]
-    3. esiLevel: Integer 1 (Most Critical) to 5 (Least Critical) based on ESI Triage Algorithm.
-    4. reasoning: A concise clinical explanation for the ESI level.
-    5. flags: Array of strings for key risk factors (e.g. "Red Flag: Chest Pain", "High Pain Score").
-    6. sbar: Object with situation, background, assessment, recommendation keys.
-       - situation: Concise summary of complaint.
-       - background: Patient demographics and risk context.
-       - assessment: Clinical impression and severity.
-       - recommendation: Immediate next steps for the ER team (e.g. "ECG within 10 mins", "Standard Bed").
+Analyze the following patient intake to generate a Triage Report.
 
-    Ensure the tone is clinical, professional, and precise.
-    `;
+PATIENT DATA:
+
+- Age/Gender: ${safeInput.age} / ${safeInput.gender}
+- Chief Complaint: ${safeInput.symptomsText}
+- Pain Score: ${safeInput.painScore}/10
+- Duration: ${safeInput.duration}
+- Chest Pain: ${safeInput.hasChestPain ? "Yes" : "No"}
+- Breathing Difficulty: ${safeInput.hasBreathingIssue ? "Yes" : "No"}
+- Language: ${safeInput.language}
+
+REQUIRED OUTPUT (JSON):
+
+1. medicalCategory: One of [CARDIAC, RESPIRATORY, NEURO, TRAUMA, GENERAL, GASTRO, ORTHO]
+2. severity: One of [CRITICAL, HIGH, MODERATE, LOW]
+3. esiLevel: Integer 1 (Most Critical) to 5 (Least Critical) based on ESI Triage Algorithm.
+4. reasoning: A concise clinical explanation for the ESI level.
+5. flags: Array of strings for key risk factors (e.g. "Red Flag: Chest Pain", "High Pain Score").
+6. sbar: Object with situation, background, assessment, recommendation keys.
+   - situation: Concise summary of complaint.
+   - background: Patient demographics and risk context.
+   - assessment: Clinical impression and severity.
+   - recommendation: Immediate next steps for the ER team (e.g. "ECG within 10 mins", "Standard Bed").
+
+Ensure the tone is clinical, professional, and precise.
+`;
 
     const response = await ai.models.generateContent({
-        model,
-        contents: prompt,
-        config: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                    medicalCategory: { type: Type.STRING },
-                    severity: { type: Type.STRING },
-                    esiLevel: { type: Type.INTEGER },
-                    reasoning: { type: Type.STRING },
-                    flags: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    sbar: {
-                        type: Type.OBJECT,
-                        properties: {
-                            situation: { type: Type.STRING },
-                            background: { type: Type.STRING },
-                            assessment: { type: Type.STRING },
-                            recommendation: { type: Type.STRING }
-                        },
-                        required: ['situation', 'background', 'assessment', 'recommendation']
-                    }
-                },
-                required: ['medicalCategory', 'severity', 'esiLevel', 'reasoning', 'flags', 'sbar']
-            }
-        }
+      model,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            medicalCategory: { type: Type.STRING },
+            severity: { type: Type.STRING },
+            esiLevel: { type: Type.INTEGER },
+            reasoning: { type: Type.STRING },
+            flags: { type: Type.ARRAY, items: { type: Type.STRING } },
+            sbar: {
+              type: Type.OBJECT,
+              properties: {
+                situation: { type: Type.STRING },
+                background: { type: Type.STRING },
+                assessment: { type: Type.STRING },
+                recommendation: { type: Type.STRING },
+              },
+              required: ["situation", "background", "assessment", "recommendation"],
+            },
+          },
+          required: ["medicalCategory", "severity", "esiLevel", "reasoning", "flags", "sbar"],
+        },
+      },
     });
-
 
     const jsonText = response.text || "{}";
     const result = JSON.parse(jsonText);
 
-
-
     // Normalize output for the app
     return {
-        sbar: result.sbar,
-        esiLevel: result.esiLevel,
-        reasoning: result.reasoning,
-        flags: result.flags || []
+      sbar: result.sbar,
+      esiLevel: result.esiLevel,
+      reasoning: result.reasoning,
+      flags: result.flags || [],
     };
-
   } catch (error) {
-      console.warn("AI Triage unavailable/failed, using rule-based fallback.", error);
-      return generateSBARFallback(input);
+    console.warn(
+      "AI Triage unavailable/failed, using rule-based fallback.",
+      error
+    );
+    return generateSBARFallback(safeInput);
   }
 };
+
 
 // --- NEW: AI FIRST AID ASSISTANT ---
 export const generateFirstAidAdvice = async (
